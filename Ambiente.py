@@ -68,7 +68,7 @@ class Ambiente():
             )
         return 2 * (-r_tilde * m.cos(theta)) + 1, 2 * (r_tilde * m.sin(theta)) - 1
 
-    def time_transofrm(self, t):
+    def time_transform(self, t):
 
         tc = (5 - 1) / 2
         return (t - tc) / tc
@@ -94,7 +94,7 @@ class Ambiente():
     def normalise(self, inventory, time, price, var, x, min_p, max_p, min_v, max_v):
         # dagli per bene il tempo (quindi l'iteratore i) e i max e min per normalizzare il prezzo
         q, x = self.inventory_action_transform(inventory, x)
-        t = self.time_transofrm(time)#
+        t = self.time_transform(time)#
         p = self.price_normalise(price, min_p, max_p)
         sig = self.qdr_var_normalize(var, min_v, max_v)
         return q, t, p, sig, x

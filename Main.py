@@ -1,5 +1,6 @@
-from Agente import Agente
-from Agente import ReplayMemory
+from Trader import Agente
+#from Agente_pytorch import Agente
+from Trader import ReplayMemory
 from Ambiente import Ambiente
 import numpy as np
 import math as m
@@ -57,20 +58,20 @@ grad_norm_history = []
 loss_history = []
 
 data = env.gbm().flatten()
-price, var, datiSli = matriciIntervalli(data, numSlice=numSlice)
+pri, v, datiSli = matriciIntervalli(data, numSlice=numSlice)
 state = age.reset(datiSli)
 
 for i in range(numSlice - 1):
 
-    current_state, action = age.reset(datiSli[i, :])
-    min_p, max_p, min_v, max_v = price[i, :].min(), price[i, :].max(), var[i, :].min(), var[i, :].max()
+    inv, time, price, var, action = age.reset(datiSli[i, :])
+    min_p, max_p, min_v, max_v = pri[i, :].min(), pri[i, :].max(), v[i, :].min(), v[i, :].max()
     reward_episode = 0
 
     for ii in range(numItTrain):
 
         for iii in range(len(datiSli[i, :])):
 
-            (loss, grad_norm, reward, next_state, epsilon) = age.step(current_state, datiSli[i, :], action.amount_sold, min_p, max_p, min_v, max_v)
+            (loss, grad_norm, reward, next_state, epsilon) = age.step(inv, time, price, var, datiSli[i, :], action, min_p, max_p, min_v, max_v)
             current_state = next_state
             # modifica anche la funzione step -> gli devi far capire che siamo in 5, e se siamo in 6 deve assolutamente liquidare tutto quanto!
 
