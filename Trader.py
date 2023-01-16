@@ -63,7 +63,7 @@ class Agente():
         q_net.add(tf.keras.layers.Input(shape=(4,))) #4 = [inventory, time, price, stddev] -> state
         q_net.add(Dense(64, activation = 'relu'  )) #Draws samples from a uniform distribution within
         q_net.add(Dense(32, activation = 'relu'  ))
-        q_net.add(Dense(1 , activation = 'linear'))
+        q_net.add(Dense(4 , activation = 'linear'))
         q_net.compile(optimizer = tf.optimizers.Adam(learning_rate = 0.001), loss = 'mse')
 
         return q_net
@@ -88,8 +88,9 @@ class Agente():
         else:
 
             transitions = self.memory.sample(self.batch_size)
+            loss, grad = self.train(transitions, data)
 
-        return *self.train(transitions, data), reward, next_state, self.epsilon
+            return loss, grad, reward, next_state, self.epsilon
 
     def reset(self, data):
         ''' returns: inv, time, price, var, action '''
@@ -185,33 +186,59 @@ class Agente():
 
         return self.target_q_net(tensor)
 
+
+
+
+
+
+    def train(self, transitition,data):
+
+        batch = np.array(transitition)
+        state_batch      = batch[:,:4]
+        action_batch     = batch[:, 4]
+        next_state_batch = batch[:, 5]
+        reward_batch     = batch[:, 6]
+        q_val = self.call_tensor_q_net(state_batch.tolist(), action_batch)#self.q_net.predict(state_batch)
+        q_next = self.call_tensor_q_net_tgt(next_state_batch.tolist(), action_batch)#self.target_q_net.predict(next_state_batch)
+        q_val = reward_batch + self.gamma * np.max(q_next)#[np.arange(len(batch)), actions], axis=1
+        training = self.q_net.fit(state_batch.tolist(), q_val.tolist(), epochs=10, verbose=0)
+
+        #epsilon *= 0.8
+
+        # Update target network
+        #if episode % target_update_freq == 0:
+        #    target_model.set_weights(model.get_weights())
+        loss = training.history['loss']
+        grad_norm = 0
+        return loss, grad_norm
+'''
     def train(self, transitition, data):
 
-        batch = transitition
+        batch = np.array(transitition)
     # PROBLEMA : DONE E' TRUE QUANDO SONO AD INTERVALLO 5, GLIELO DEVO DIRE E PASSARE L'INFO NEI METODI 
-        state_batch = batch[0][:4] 
-        action_batch = batch[0][4] 
-        next_state_batch = batch[0][5] 
-        #next_state_batch = [next_state_batch[0][0], next_state_batch[1], next_state_batch[2], next_state_batch[3]]
-        reward_batch = batch[0][6]  #("state", "action", "next_state", "reward"), done_batch
-        current_q  = self.call_tensor_q_net(state_batch, action_batch)#q_net(np.array(state_batch).astype('float32'))#.numpy() # non funziona con batch - > ordinali in un tensore [64,4,1]
+        state_batch      = batch[:,:4]#batch[0][:4] 
+        action_batch     = batch[:,4]#batch[0][4] 
+        next_state_batch = batch[:,5]#batch[0][5] 
+        #next_state_batch =# [next_state_batch[0][0], next_state_batch[1], next_state_batch[2], next_state_batch[3]]
+        reward_batch     = batch[:,6]#batch[0][6]  #("state", "action", "next_state", "reward"), done_batch
+        current_q  = self.call_tensor_q_net(state_batch.tolist(), action_batch)#q_net(np.array(state_batch).astype('float32'))#.numpy() # non funziona con batch - > ordinali in un tensore [64,4,1]
         #mi dice setting an array element with a sequence -> come risolvere??
         #crea una funzione che ti ridia indietro current_q
         target_q   = np.copy(current_q)
-        next_q     = self.call_tensor_q_net_tgt(next_state_batch, action_batch)#.numpy()#
+        next_q     = self.call_tensor_q_net_tgt(next_state_batch.tolist(), action_batch)#.numpy()#
         max_next_q = np.amax(next_q, axis=1)
 
-        for i in range(10):#state_batch.shape[0]
+        for i in range(state_batch.shape[0]):#
 
-            target_q_val = reward_batch#[i]
+            target_q_val = reward_batch[i]
             
             #if not done_batch[i]: #
             
-            target_q_val += reward_batch + self.gamma * max_next_q#gamma = 0.95[i][i] 
+            target_q_val += reward_batch[i] + self.gamma * max_next_q#[i]#gamma = 0.95 
             
-            target_q= target_q_val#[i][i][action_batch] 
+            target_q[i][action_batch[i]] = target_q_val#[i][i][action_batch] 
         
-        training_history = self.q_net.fit(x=np.array(state_batch).transpose(), y=target_q, verbose=0) #->> riempili per batch size e ci siamo su sta parte, 
+        training_history = self.q_net.fit(x=np.array(state_batch), y=target_q, verbose=0) #->> riempili per batch size e ci siamo su sta parte, 
         #devono essere x=(64,4,1) e y =(64,1)
 
         # c'è da riempire il batch con 64 episodi di 0 e via via poi ci siamo!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -221,3 +248,4 @@ class Agente():
             #target = r + self.gamma * Qp_eval
             #loss = torch.mean(( target.detach() - Q_eval )**2)
         return loss
+        '''

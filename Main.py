@@ -49,7 +49,7 @@ def matriciIntervalli(data,numSlice):
 #    return reward_history, epsilon_history, grad_norm_history, loss_history, qdr_var_history, price_history
 
 #if __name__ == "main":
-numItTrain = 10
+numItTrain = 1
 numSlice = 6
 numTraj = 10
 reward_history = []
@@ -61,27 +61,27 @@ data = env.gbm().flatten()
 pri, v, datiSli = matriciIntervalli(data, numSlice=numSlice)
 state = age.reset(datiSli)
 
-for i in range(numSlice - 1):
+for i in tqdm(range(numSlice - 1)):
 
     inv, time, price, var, action = age.reset(datiSli[i, :])
     min_p, max_p, min_v, max_v = pri[i, :].min(), pri[i, :].max(), v[i, :].min(), v[i, :].max()
     reward_episode = 0
 
-    for ii in range(numItTrain):
+    for ii in tqdm(range(numItTrain)):
 
-        for iii in range(len(datiSli[i, :])):
+        for iii in tqdm(range(len(datiSli[i, :]))):
 
-            (loss, grad_norm, reward, next_state, epsilon) = age.step(inv, time, price, var, datiSli[i, :], action, min_p, max_p, min_v, max_v)
+            (loss, grad_norm, reward, next_state, epsilon) = age.step(inv, time, price, var, datiSli[i, :], action, min_p, max_p, min_v, max_v)#
             current_state = next_state
             # modifica anche la funzione step -> gli devi far capire che siamo in 5, e se siamo in 6 deve assolutamente liquidare tutto quanto!
 
-        reward_episode += reward
-        loss_history.append(m.log(loss))
+            reward_episode += reward
+        loss_history.append(loss)
         epsilon_history.append(epsilon)
         reward_history.append(reward_episode)
-        grad_norm_history.append(grad_norm)
+        #grad_norm_history.append(grad_norm)m.log(loss)
 
-    print('done')
+print(reward_history, loss_history)
 '''    
 
 for t in range(numTraj):# ciclo di quante traiettorie vuoi considerare
@@ -114,8 +114,8 @@ for t in range(numTraj):# ciclo di quante traiettorie vuoi considerare
     #reward_history, epsilon_history, grad_norm_history, loss_history, qdr_var_history, price_history = main()
 
 
-stock_dict = {"train_drift": 6000}
-stock_dict_pre_training = {"train_drift": 6000}
-for stock in tqdm(stock_dict.keys()):
-    for i in tqdm(range(stock_dict[stock])):
-        print('a')
+#stock_dict = {"train_drift": 6000}
+#stock_dict_pre_training = {"train_drift": 6000}
+#for stock in tqdm(stock_dict.keys()):
+#    for i in tqdm(range(stock_dict[stock])):
+#        print('a')
