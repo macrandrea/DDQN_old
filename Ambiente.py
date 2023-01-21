@@ -9,7 +9,7 @@ Action = namedtuple("Action", "amount_sold")
 
 class Ambiente():
 
-    def __init__(self, S0 = 100, mu = 0.01, kappa = 5, theta = 1, sigma = 0.1, lambd = 0.1, t0 = 0, t = 1, T = 7200, numIt = 1_000):
+    def __init__(self, S0 = 100, mu = 0.01, kappa = 5, theta = 1, sigma = 0.1, lambd = 0.1, t0 = 0, t = 1, T = 7200, numIt = 1_000): #T = 1.0, M = 7200, I = 1_000
         
         self.S0 = S0
         self.mu = mu
@@ -36,6 +36,42 @@ class Ambiente():
         for t in range(1, M + 1):
             rand = np.random.standard_normal(I)
             paths[t] = paths[t - 1] * np.exp((self.mu - 0.5 * self.sigma ** 2) * dt + self.sigma * np.sqrt(dt) * rand)
+        return paths
+
+    def gen_paths(self, I):#S0, r, sigma, T, M, I):
+        ''' Generate Monte Carlo paths for geometric Brownian motion.
+
+        Parameters
+        ==========
+        S0 : float
+            initial stock/index value
+        r : float
+            constant short rate
+        sigma : float
+            constant volatility
+        T : float
+            final time horizon
+        M : int
+            number of time steps/intervals
+        I : int
+            number of paths to be simulated
+
+        Returns
+        =======
+        paths : ndarray, shape (M + 1, I)
+            simulated paths given the parameters
+        '''
+        T = 1.0
+        M = 1200
+        #I = 100
+        dt = float(T) / M
+        paths = np.zeros((M + 1, I), np.float64)
+        paths[0] = self.S0
+        for t in range(1, M + 1):
+            rand = np.random.standard_normal(I)
+            rand = (rand - rand.mean()) / rand.std()
+            paths[t] = paths[t - 1] * np.exp((self.mu - 0.5 * self.sigma ** 2) * dt +
+                                             self.sigma * np.sqrt(dt) * rand)
         return paths
 
     def returns(self, s):

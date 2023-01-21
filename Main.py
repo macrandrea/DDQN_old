@@ -14,10 +14,6 @@ Transition = namedtuple("Transition", ("state", "action", "next_state", "reward"
 State = namedtuple("State", "inventory, time, qdr_var, price")
 Action = namedtuple("Action", "amount_sold")
 
-env = Ambiente()
-age = Agente()
-mem = ReplayMemory(500)
-
 def sliceData(price, slici):
 
     step = int(len(price)/slici)
@@ -45,24 +41,31 @@ def matriciIntervalli(data,numSlice):
 #if __name__ == "main":
 numItTrain = 1
 numSlice = 6
-numTraj = 10
+numTraj = 2
 reward_history = []
 epsilon_history = []
 grad_norm_history = []
 loss_history = []
 
-data = env.gbm().flatten()
-pri, v, datiSli = matriciIntervalli(data, numSlice=numSlice)
-#state = age.reset(datiSli)
-action = rnd.uniform(0, 1)
+env = Ambiente()
+age = Agente(numItTrain)
+mem = ReplayMemory(500)
 
-for i in tqdm(range(numSlice - 1)):# quanti periodi dividi la giornata, in questo caso 5
+data = env.gen_paths(numTraj)#.flatten()
 
-    inv, time, price, var, action = age.reset(datiSli[i, :], action, i) # questo pezzo va messo fuori dai loop
-    min_p, max_p, min_v, max_v = pri[i, :].min(), pri[i, :].max(), v[i, :].min(), v[i, :].max()
-    reward_episode = 0
+for j in tqdm(range(numTraj)):#len(data)
 
-    for ii in tqdm(range(numItTrain)):# quante volte vuoi fare il train
+    pri, v, datiSli = matriciIntervalli(data[:,j], numSlice=numSlice)
+    #state = age.reset(datiSli)
+    action = rnd.uniform(0, 1)
+
+    for i in tqdm(range(numSlice - 1)):#tqdm(range()):# quanti periodi dividi la giornata, in questo caso 5
+
+        inv, time, price, var, action = age.reset(datiSli[i, :], action, i)
+        min_p, max_p, min_v, max_v = pri[i, :].min(), pri[i, :].max(), v[i, :].min(), v[i, :].max()
+        reward_episode = 0
+
+        #for ii in tqdm(range(numItTrain)):# quante volte vuoi fare il train
 
         for iii in tqdm(range(2 ,(len(datiSli[i, :])) + 1)): # per ogni 1200 time steps fai questo
 
@@ -70,11 +73,10 @@ for i in tqdm(range(numSlice - 1)):# quanti periodi dividi la giornata, in quest
             inv, time, action = next_state[0], next_state[1], x_new
             current_state = next_state
             # modifica anche la funzione step -> gli devi far capire che siamo in 5, e se siamo in 6 deve assolutamente liquidare tutto quanto!
-
             reward_episode += reward
+
         loss_history.append(loss)
         epsilon_history.append(epsilon)
-        reward_history.append(reward_episode/1200)
-        #grad_norm_history.append(grad_norm)m.log(loss)
+        reward_history.append(-100*pri[0,i]+np.mean(reward_episode))
 
-print(reward_history, loss_history)
+print(reward_history, epsilon_history, loss_history)

@@ -33,7 +33,7 @@ class ReplayMemory():
 
 class Agente():
 
-    def __init__(self):
+    def __init__(self, numTrain):
 
         self.q_net = self._build_dqn_model()
         self.target_q_net = self._build_dqn_model()
@@ -45,7 +45,8 @@ class Agente():
         self.passo = 1200
         self.batch_size = 128
         self.gamma = 0.95
-        self.memory = ReplayMemory(5000)
+        self.memory = ReplayMemory(500)
+        self.numTrain = numTrain
     
     @staticmethod
     def _build_dqn_model():
@@ -131,19 +132,19 @@ class Agente():
         if i < 4:
             q_val = reward_batch + self.gamma * np.max(q_next)
 
-            training = self.q_net.fit(state_act_batch, q_val, epochs=100, verbose=0)
+            training = self.q_net.fit(state_act_batch, q_val, epochs=self.numTrain, verbose=0)
             loss = training.history['loss']
         elif i == 4:
             correction_term = (next_state_act_batch[0][0]) * (next_state_act_batch[0][2]) - self.a_penalty * ((next_state_act_batch[0][0]) ** 2)
 
             q_val = reward_batch + self.gamma * correction_term
 
-            training = self.q_net.fit(state_act_batch, q_val, epochs=100, verbose=0)
+            training = self.q_net.fit(state_act_batch, q_val, epochs=self.numTrain, verbose=0)
             loss = training.history['loss']
         else:
             q_val = reward_batch
 
-            training = self.q_net.fit(state_act_batch, q_val, epochs=100, verbose=0)
+            training = self.q_net.fit(state_act_batch, q_val, epochs=self.numTrain, verbose=0)
             loss = training.history['loss']
         grad_norm = 0
         #update della rete q
