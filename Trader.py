@@ -58,22 +58,29 @@ class Agente():
         1 Q value per possible action.
 
         :return: Q network
-        """
+        
         q_net = Sequential()
-        q_net.add(tf.keras.layers.Input(shape=(4,))) #4 = [inventory, time, price, stddev] -> state
+        q_net.add(tf.keras.layers.Input(shape=(4,))) #4 = [inventory, time, price, stddev, prev_action] -> state -> diventano 5
+        q_net.add(Dense(20, activation = 'relu'  )) 
+        q_net.add(Dense(20, activation = 'relu'  ))
+        q_net.add(Dense(20, activation = 'relu'  )) 
+        q_net.add(Dense(20, activation = 'relu'  ))
+        q_net.add(Dense(20, activation = 'relu'  ))      
+        q_net.add(Dense(1 , activation = 'linear'))
+        q_net.compile(optimizer = tf.optimizers.Adam(learning_rate = 0.001), loss = 'mse')"""
+        q_net = Sequential()
+        q_net.add(tf.keras.layers.Input(shape=(5,))) #4 = [inventory, time, price, stddev] -> state
         q_net.add(Dense(64, activation = 'relu'  )) #Draws samples from a uniform distribution within
         q_net.add(Dense(32, activation = 'relu'  ))
-        q_net.add(Dense(4 , activation = 'linear'))
+        q_net.add(Dense(1 , activation = 'linear'))
         q_net.compile(optimizer = tf.optimizers.Adam(learning_rate = 0.001), loss = 'mse')
-
         return q_net
 
     #def step(self, curr_state, data, x, min_p, max_p, min_v, max_v):
     def step(self, inv, time, price, var, data, x,   min_p, max_p, min_v, max_v):    
         #q, t, p, v, x = env.normalise(curr_state.inventory, curr_state.time, curr_state.price, curr_state.qdr_var, x, min_p, max_p, min_v, max_v)
-        #curr_state = State(q, t, p, v)
         time_step = time# + 1
-        x = self.collect_policy(inv, time, price, var)#, x, min_p, max_p, min_v, max_v)
+        x = self.collect_policy(inv, time, price, var)
         reward = self.calc_reward(inv, time, price, var, x, data)
         price = env.returns(data)
         var = env.var(data)
@@ -99,7 +106,7 @@ class Agente():
 
         return self.inventory, 0, 0.1 , price[0], rnd.uniform(0, 1)#var
 
-    def collect_policy(self, inv, time, price, var):#, x, min_p, max_p, min_v, max_v):
+    def collect_policy(self, inv, time, price, var):
 
         q = int(inv)
         t = int(time)
@@ -110,22 +117,19 @@ class Agente():
 
         if self.epsilon > rnd.uniform(0, 1):
 
-            rand_act = np.random.binomial(q, 1 / (self.passo - t))
-
+            rand_act = np.random.binomial(q, 1 / (self.time_subdivisions ))#- t
+            self.epsilon *= 0.
             return rand_act
         else: 
 
-            x = self.choose_best_action(inv, time, price, var)#, x, min_p, max_p, min_v, max_v)
+            x = self.choose_best_action(inv, time, price, var)
             
             return x
     
-    def choose_best_action(self, inv, time, price, var):#, x, min_p, max_p, min_v, max_v):
-
+    def choose_best_action(self, inv, time, price, var):
         #q, t, price, var, x = env.normalise(state.inventory, state.time, state.price, state.qdr_var, x, min_p, max_p, min_v, max_v ) 
-        #state = State(q, t, price, var) 
-        #input = tf.convert_to_tensor(np.asarray(state).reshape(1,-1).astype('float32'))#, dtype=tf.float32
         state = [[inv, time, price, var]]
-        action_q = self.q_net(tf.convert_to_tensor(np.asarray(state).astype('float32')))#.reshape(1,-1) # da sempre errore qui!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        action_q = self.q_net(tf.convert_to_tensor(np.asarray(state).astype('float32')))
         action = np.argmax(action_q, axis=0)
 
         return action[0]
@@ -146,9 +150,6 @@ class Agente():
         xs = x / M  # amount sold each second
         T_0 = self.starting_trading_time        
         inventory_left = q
-        #for i in range(T_0 + M * t, T_0 + M * (t + 1)):
-
-            #if i + 1 < len(data_set):
         reward -= inventory_left * (data_set[t]- data_set[t-1]) - a * (xs ** 2)
         inventory_left -= xs
 
@@ -156,34 +157,18 @@ class Agente():
 
     def call_tensor_q_net(self, state_batch, action_batch):
     # devi riempirlo e poi mandarlo in q_net
-        tensor = []#np.empty((64, 4, 1))
-        #for (current_state, current_action) in zip(state_batch, action_batch):
+        tensor = []
         q, t, price, qdr_var  = state_batch[0], state_batch[1] , state_batch[2], state_batch[3]
-        tensor.append([ q, t, price, qdr_var])#.astype('float32')
-        #tf.cast(np.array(tensor) , dtype=tf.float32)
-        tensor = np.array(tensor)
-        #tensor = np.array(tensor)
-            #tensor.type(tf.float64)
-
-        #if net == 'main_net':
-        #    return self.main_net(in_features).type(torch.float64)        
-
+        tensor.append([ q, t, price, qdr_var])
+        tensor = np.array(tensor)     
         return self.q_net(tensor)
 
     def call_tensor_q_net_tgt(self, state_batch, action_batch):
     # devi riempirlo e poi mandarlo in q_net
-        tensor = []#np.empty((64, 4, 1))
-        #for (current_state, current_action) in zip(state_batch, action_batch):
+        tensor = []
         q, t, price, qdr_var  = state_batch[0], state_batch[1] , state_batch[2], state_batch[3]
-        tensor.append([ q, t, price, qdr_var])#.astype('float32') #AGGIUSTA Q0 CHE OGNI TANTO E INT OGNI TANTO E' ARRAY
-        #tf.cast(np.array(tensor) , dtype=tf.float32)
-        #tensor = np.array(tensor[0])
+        tensor.append([ q, t, price, qdr_var])
         tensor = np.array(tensor)
-            #tensor.type(tf.float64)
-
-        #if net == 'main_net':
-        #    return self.main_net(in_features).type(torch.float64)        
-
         return self.target_q_net(tensor)
 
 
@@ -191,7 +176,7 @@ class Agente():
 
 
 
-    def train(self, transitition,data):
+    def train(self, transitition, data):
 
         batch = np.array(transitition)
         state_batch      = batch[:,:4]
@@ -200,52 +185,9 @@ class Agente():
         reward_batch     = batch[:, 6]
         q_val = self.call_tensor_q_net(state_batch.tolist(), action_batch)#self.q_net.predict(state_batch)
         q_next = self.call_tensor_q_net_tgt(next_state_batch.tolist(), action_batch)#self.target_q_net.predict(next_state_batch)
-        q_val = reward_batch + self.gamma * np.max(q_next)#[np.arange(len(batch)), actions], axis=1
+        q_val = reward_batch + self.gamma * np.max(q_next)
         training = self.q_net.fit(state_batch.tolist(), q_val.tolist(), epochs=10, verbose=0)
-
-        #epsilon *= 0.8
-
-        # Update target network
-        #if episode % target_update_freq == 0:
-        #    target_model.set_weights(model.get_weights())
         loss = training.history['loss']
         grad_norm = 0
+        #update della rete q
         return loss, grad_norm
-'''
-    def train(self, transitition, data):
-
-        batch = np.array(transitition)
-    # PROBLEMA : DONE E' TRUE QUANDO SONO AD INTERVALLO 5, GLIELO DEVO DIRE E PASSARE L'INFO NEI METODI 
-        state_batch      = batch[:,:4]#batch[0][:4] 
-        action_batch     = batch[:,4]#batch[0][4] 
-        next_state_batch = batch[:,5]#batch[0][5] 
-        #next_state_batch =# [next_state_batch[0][0], next_state_batch[1], next_state_batch[2], next_state_batch[3]]
-        reward_batch     = batch[:,6]#batch[0][6]  #("state", "action", "next_state", "reward"), done_batch
-        current_q  = self.call_tensor_q_net(state_batch.tolist(), action_batch)#q_net(np.array(state_batch).astype('float32'))#.numpy() # non funziona con batch - > ordinali in un tensore [64,4,1]
-        #mi dice setting an array element with a sequence -> come risolvere??
-        #crea una funzione che ti ridia indietro current_q
-        target_q   = np.copy(current_q)
-        next_q     = self.call_tensor_q_net_tgt(next_state_batch.tolist(), action_batch)#.numpy()#
-        max_next_q = np.amax(next_q, axis=1)
-
-        for i in range(state_batch.shape[0]):#
-
-            target_q_val = reward_batch[i]
-            
-            #if not done_batch[i]: #
-            
-            target_q_val += reward_batch[i] + self.gamma * max_next_q#[i]#gamma = 0.95 
-            
-            target_q[i][action_batch[i]] = target_q_val#[i][i][action_batch] 
-        
-        training_history = self.q_net.fit(x=np.array(state_batch), y=target_q, verbose=0) #->> riempili per batch size e ci siamo su sta parte, 
-        #devono essere x=(64,4,1) e y =(64,1)
-
-        # c'è da riempire il batch con 64 episodi di 0 e via via poi ci siamo!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-        loss = training_history.history['loss']
-        #computing the loss, it must be 
-            #target = r + self.gamma * Qp_eval
-            #loss = torch.mean(( target.detach() - Q_eval )**2)
-        return loss
-        '''

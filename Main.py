@@ -39,9 +39,9 @@ def matriciIntervalli(data,numSlice):
 
 
 #if __name__ == "main":
-numItTrain = 1
+numItTrain = 20
 numSlice = 6
-numTraj = 2
+numTraj = 10
 reward_history = []
 epsilon_history = []
 grad_norm_history = []
@@ -51,10 +51,10 @@ env = Ambiente()
 age = Agente(numItTrain)
 mem = ReplayMemory(500)
 
-data = env.gen_paths(numTraj)#.flatten()
+#.flatten()
 
 for j in tqdm(range(numTraj)):#len(data)
-
+    data = env.gen_paths(1)
     pri, v, datiSli = matriciIntervalli(data[:,j], numSlice=numSlice)
     #state = age.reset(datiSli)
     action = rnd.uniform(0, 1)
@@ -69,7 +69,7 @@ for j in tqdm(range(numTraj)):#len(data)
 
         for iii in tqdm(range(2 ,(len(datiSli[i, :])) + 1)): # per ogni 1200 time steps fai questo
 
-            (loss, reward, next_state, x_new, epsilon) = age.step(inv, iii-2, pri[i], v[i], action, i)#datiSli[i, :], min_p, max_p, min_v, max_v
+            (loss, reward, next_state, x_new, epsilon) = age.step(inv, iii-2, pri[i], v[i], action, i, pri[i,0])#datiSli[i, :], min_p, max_p, min_v, max_v
             inv, time, action = next_state[0], next_state[1], x_new
             current_state = next_state
             # modifica anche la funzione step -> gli devi far capire che siamo in 5, e se siamo in 6 deve assolutamente liquidare tutto quanto!
@@ -77,6 +77,6 @@ for j in tqdm(range(numTraj)):#len(data)
 
         loss_history.append(loss)
         epsilon_history.append(epsilon)
-        reward_history.append(-100*pri[0,i]+np.mean(reward_episode))
+        reward_history.append(reward_episode)
 
 print(reward_history, epsilon_history, loss_history)

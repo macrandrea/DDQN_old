@@ -18,7 +18,6 @@ class Ambiente():
         self.sigma = sigma
         self.dt = 1/T
         self.T = T
-        #self.t = t
         self.t0 = t0
         self.tau = t-t0
         self.lambd = lambd
@@ -38,38 +37,14 @@ class Ambiente():
             paths[t] = paths[t - 1] * np.exp((self.mu - 0.5 * self.sigma ** 2) * dt + self.sigma * np.sqrt(dt) * rand)
         return paths
 
-    def gen_paths(self, I):#S0, r, sigma, T, M, I):
-        ''' Generate Monte Carlo paths for geometric Brownian motion.
-
-        Parameters
-        ==========
-        S0 : float
-            initial stock/index value
-        r : float
-            constant short rate
-        sigma : float
-            constant volatility
-        T : float
-            final time horizon
-        M : int
-            number of time steps/intervals
-        I : int
-            number of paths to be simulated
-
-        Returns
-        =======
-        paths : ndarray, shape (M + 1, I)
-            simulated paths given the parameters
-        '''
+    def gen_paths(self, I):#S0, r, sigma, T, M, I):#rand = (rand - rand.mean()) / rand.std()
         T = 1.0
-        M = 1200
-        #I = 100
+        M = 200 # 1/M sono gli steps che fa
         dt = float(T) / M
         paths = np.zeros((M + 1, I), np.float64)
         paths[0] = self.S0
         for t in range(1, M + 1):
             rand = np.random.standard_normal(I)
-            rand = (rand - rand.mean()) / rand.std()
             paths[t] = paths[t - 1] * np.exp((self.mu - 0.5 * self.sigma ** 2) * dt +
                                              self.sigma * np.sqrt(dt) * rand)
         return paths
@@ -78,13 +53,13 @@ class Ambiente():
         price = [] 
         for t in range(1,len(s)):
             price.append(s[t] - s[t - 1])
-        return price
+        return np.array(price)
 
     def var(self, s):
         var = [] 
         for t in range(1,len(s)):
             var.append((s[t] - s[t - 1]) ** 2)
-        return var
+        return np.array(var)
 
     def inventory_action_transform(self, q, x):
 
