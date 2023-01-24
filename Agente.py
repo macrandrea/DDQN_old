@@ -12,6 +12,8 @@ from keras.layers import Dense
 from collections import namedtuple, deque
 from Ambiente import Ambiente
 layer = layers.Normalization()
+delayer = layers.Normalization(axis=-1, invert =True)
+layer_one = layers.Normalization()
 
 env = Ambiente()
 
@@ -45,7 +47,7 @@ class Agente():
         self.epsilon = 0.5
         self.epsilon_decay = 0.995
         self.passo = 1200
-        self.batch_size = 128
+        self.batch_size = 256
         self.gamma = 0.95
         self.memory = ReplayMemory(6200)
         self.numTrain = numTrain
@@ -55,15 +57,15 @@ class Agente():
         # rete neurale feed-forward
         q_net = Sequential()
         q_net.add(tf.keras.layers.Input(shape=(5,))) #4 = [inventory, time, price, stddev, prev_action, state]
+        q_net.add(Dense(20*4, activation = 'relu'  )) 
+        q_net.add(Dense(20*2, activation = 'relu'  ))
         q_net.add(Dense(20, activation = 'relu'  )) 
-        q_net.add(Dense(20, activation = 'relu'  ))
-        q_net.add(Dense(20, activation = 'relu'  )) 
-        q_net.add(Dense(20, activation = 'relu'  ))
-        q_net.add(Dense(20, activation = 'relu'  ))      
+        q_net.add(Dense(20*0.5, activation = 'relu'  ))
+        q_net.add(Dense(20*0.25, activation = 'relu'  ))      
         q_net.add(Dense(1 , activation = 'linear')) # esce un vettore di q values per ogni azione possibile
         q_net.compile(optimizer = tf.optimizers.Adam(learning_rate = 0.001), loss = 'mse')
 
-        return q_net
+        return q_net # la devo ri-compilare ogni volta che cambia lo stat? non avrebbe molto sensoi credo
 
     def action(self, state, x):
         # azione da eseguire: estrae un numero a caso: se questo è minore di epsilon allora fa azione casuale x=(0,q_t), altrimenti fa argmax_a(Q(s,a))
@@ -72,15 +74,18 @@ class Agente():
         # elif i == 5:
         #     return state[0]
         elif np.random.rand() <= self.epsilon:
-            #rand_act = np.random.binomial(state[0], 1 / (self.time_subdivisions))#- t
+            rand_act = np.random.binomial(np.floor(state[0]), 1 / (self.time_subdivisions))#- t
             self.epsilon *= self.epsilon_decay
-            return rnd.randrange(state[0])
-            #return rand_act
+            #return rnd.randrange(np.floor(state[0]))
+            return rand_act
         else:
             state.append(x)
-            action = np.argmax(self.q_net(np.array([state]).astype('float32'))[0])
-
-        return np.abs(action)
+            state = np.array([state])
+            layer.adapt(state)
+            state = layer(state)
+            action = self.q_net.predict(state, 20, verbose=0)[0]
+            action = np.argmax(delayer(action))
+        return action
         #if np.random.rand() <= self.epsilon:
         #return random.randrange(self.action_size)
 
@@ -133,18 +138,20 @@ class Agente():
         # nota bene che se siamo nel penultimo periodo ha una reward function diversa da quella solita, se siamo nell'ultimo periodo è differente perchè 
         # deve liquidare tutto quello che ha in termini di inventario.
         batch = np.asarray(trans).astype('float32')
-        layer.adapt(batch)
-        batch_t = layer(batch)# normalizza 
+        layer_one.adapt(batch)
+        batch_t = layer_one(batch)# normalizza 
         #batch_t = scaler.fit_transform(batch) #normalizzazione
-        state_act_batch      = batch_t[:,:5]
-        next_state_act_batch = batch_t[:, 5: 10]
-        reward_batch     = batch_t[:, 10]
+        state_act_batch      = np.array([tup[:5] for tup in batch_t])#batch_t[:,:5]
+        next_state_act_batch = np.array([tup[5:10] for tup in batch_t])#batch_t[:, 5: 10]
+        reward_batch     = np.array([tup[10] for tup in batch_t])#batch_t[:, 10]
+        
         ##
-        q_val = self.q_net(state_act_batch)#self.q_net.predict(state_batch)
-        q_next = self.target_q_net(next_state_act_batch)#self.target_q_net.predict(next_state_batch)
+        #q_val = self.q_net.predict(state_act_batch,verbose  = 0)#self.q_net.predict(state_batch)
+        ##self.target_q_net.predict(next_state_batch)
         if i < 4:
-            q_val = reward_batch + self.gamma * np.max(q_next)
-
+            q_next = self.target_q_net.predict(next_state_act_batch, verbose = 0)
+            q_val = reward_batch + self.gamma * np.amax(q_next)
+            
             training = self.q_net.fit(state_act_batch, q_val, epochs=self.numTrain, verbose=0)
             loss = training.history['loss']
         elif i == 4:
@@ -162,13 +169,14 @@ class Agente():
         grad_norm = 0
 
         #update della rete q
-        if state_act_batch[1][0]%10 == 0:
+        if state_act_batch[1][0]%5 == 0:
             q_next = q_val
 
         return loss, grad_norm
 
         ###################################################################################
-        # non funziona la scelta dell'azione -> sceglie sempre azione = 0, 
+        # non funziona la scelta dell'azione -> sceglie sempre azione = 0, - SEMBRA RISOLTO MA NON SEMPRE E' OTTIMALE LA SUA SCELTA
+        # forse problemi con l'esplorazione dello spazio delle azioni e degli stati
         # non capisco come delimitare lo spazio delle azioni che escono fuori dalla rete neurale x_t \in (0,q_t) 
         # e come delimitare quello delle azioni epsilon-greedy 
         # in più il codice è lento e vorrei riuscire a farlo andare più veloce 

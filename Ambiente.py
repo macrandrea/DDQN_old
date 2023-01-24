@@ -39,7 +39,7 @@ class Ambiente():
 
     def gen_paths(self, I):#S0, r, sigma, T, M, I):#rand = (rand - rand.mean()) / rand.std()
         T = 1.0
-        M = 200 # 1/M sono gli steps che fa
+        M = 5000#7200 # 1/M sono gli steps che fa
         dt = float(T) / M
         paths = np.zeros((M + 1, I), np.float64)
         paths[0] = self.S0

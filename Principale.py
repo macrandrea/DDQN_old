@@ -12,18 +12,19 @@ from collections import namedtuple, deque
 numItTrain = 1
 numSlice = 5
 numTraj = 2
-inventory = 20
+
 reward_history = []
 epsilon_history = []
 grad_norm_history = []
 loss_history = []
 action_history = []
-
+actions =  []
 #env = Ambiente()
 #age = Agente(numItTrain)
 #mem = ReplayMemory(500)
 
 for i in tqdm(range(numTraj)): # loop su quante traiettorie montecarlo considerate
+    inventory = 20
     env = Ambiente()
     age = Agente(numItTrain)
     dati = env.gen_paths(1).flatten()
@@ -43,13 +44,15 @@ for i in tqdm(range(numTraj)): # loop su quante traiettorie montecarlo considera
 
         for iii in tqdm(range(1, int(len(dati)/numSlice))): #per ogni singolo time-step vede lo stato -> fa un'azione -> vede reward -> setta il prossimo stato
         
-            (loss, reward, next_state, x_new, epsilon) = age.step(inv, iii, ritorni, vola, x, counter, ret[0])
+            (loss, reward, next_state, x_new, epsilon) = age.step(inv, iii, ritorni, vola, x, counter, price)
             inv, time, x = next_state[0], next_state[1], x_new
             reward_episode += reward
+            action_history.append(x)
 
+        actions.append(action_history)
         loss_history.append(loss)
         epsilon_history.append(epsilon)
         reward_history.append(reward_episode/int(len(dati)/numSlice))
-        action_history.append(x)
+        #action_history.append(x)
 
-print(reward_history, action_history, epsilon_history, loss_history)    
+print(reward_history, actions, epsilon_history, loss_history)    
